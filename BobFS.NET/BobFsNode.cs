@@ -7,18 +7,19 @@ namespace BobFS.NET
     public class BobFsNode
     {
         public const int NodeSize = 16;
-
-        private readonly uint _inum;
+        
         private readonly BobFs _bobFs;
         private readonly byte[] _tmpBuffer;
         private readonly Inode _node;
         private readonly Indirects _indirect;
         private bool _nodeValid, _indirectValid;
 
+        public uint Inum { get; }
+
         internal BobFsNode(BobFs bobFs, uint inum)
         {
             _bobFs = bobFs;
-            _inum = inum;
+            Inum = inum;
 
             _tmpBuffer = new byte[BobFs.BlockSize];
             _node = new Inode();
@@ -34,7 +35,7 @@ namespace BobFS.NET
                 if (_nodeValid)
                     return _node;
 
-                _bobFs.Source.Read((int) (BobFs.BlockSize*3 + NodeSize*_inum), _tmpBuffer, 0, NodeSize);
+                _bobFs.Source.Read((int) (BobFs.BlockSize*3 + NodeSize*Inum), _tmpBuffer, 0, NodeSize);
                 _node.ReadFrom(_tmpBuffer);
                 _node.Modified = false;
 
@@ -234,7 +235,21 @@ namespace BobFS.NET
 
         public void LinkNode(string name, BobFsNode file)
         {
-            throw new NotImplementedException();
+            if (!IsDirectory)
+                throw new InvalidOperationException("Current node is not a directory.");
+
+            // Add to directory
+            DirEntry newDirEntry = new DirEntry();
+            newDirEntry.Inum = file.Inum;
+            newDirEntry.Name = name;
+            newDirEntry.WriteTo(_tmpBuffer);
+            int bytesWritten = WriteAll((int) Size, _tmpBuffer, name.Length + 8);
+            if (bytesWritten < 0)
+                throw new Exception("Current directory is full.");
+
+            // Update nlinks in node
+            file.Node.NumLinks++;
+            file.Commit();
         }
 
         public void Invalidate()
@@ -249,7 +264,7 @@ namespace BobFS.NET
             if (Node.Modified)
             {
                 _node.WriteTo(_tmpBuffer);
-                _bobFs.Source.Write((int) (BobFs.BlockSize*3 + NodeSize*_inum), _tmpBuffer, 0, NodeSize);
+                _bobFs.Source.Write((int) (BobFs.BlockSize*3 + NodeSize*Inum), _tmpBuffer, 0, NodeSize);
             }
 
             // Write indirects
