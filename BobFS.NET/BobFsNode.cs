@@ -126,6 +126,46 @@ namespace BobFS.NET
             return part == 0 ? DirectBlock : Indirect[part - 1];
         }
 
+        private int FindFreeBlock()
+        {
+            int freeBlock = -1;
+
+            _bobFs.Source.ReadAll(BobFs.BlockSize*1, _tmpBuffer, 0, BobFs.BlockSize);
+            BitArray blockBitmap = new BitArray(_tmpBuffer);
+            for (int index = 0; index < BobFs.BlockSize*8 && freeBlock == -1; index++)
+                if (!blockBitmap[index])
+                    freeBlock = index;
+
+            if (freeBlock == -1)
+                return -1;
+
+            blockBitmap[freeBlock] = true;
+            blockBitmap.CopyTo(_tmpBuffer, 0);
+            _bobFs.Source.WriteAll(BobFs.BlockSize*1, _tmpBuffer, 0, BobFs.BlockSize);
+            
+            return freeBlock;
+        }
+
+        private uint AssignBlock(int part)
+        {
+            if (part >= 1 + 256)
+                throw new ArgumentException("Invalid part.");
+
+            if (part == 0)
+            {
+                DirectBlock = (uint) FindFreeBlock();
+                return DirectBlock;
+            }
+
+            if (IndirectBlock == 0)
+                IndirectBlock = (uint) FindFreeBlock();
+
+            if (Indirect[part - 1] != 0)
+                throw new Exception("Part already assigned.");
+
+            return (Indirect[part - 1] = (uint) FindFreeBlock());
+        }
+
         /// <summary>
         /// Similar to BlockSource.Read, but works with blocks instead of sectors.
         /// </summary>
@@ -178,16 +218,21 @@ namespace BobFS.NET
         {
             int part = offset / BobFs.BlockSize;
             int start = offset % BobFs.BlockSize;
-            
-            if (part > Size/BobFs.BlockSize) // Update size and assign new blocks in a single sweep
-                return 0;
+
+            // Increase size if needed
+            if (offset + n > Size)
+                Size = (uint) (offset + n);
+
+            // Assign block if needed
+            uint block = PartBlockNum(part);
+            if (block == 0)
+                block = AssignBlock(part);
 
             int end = start + n;
             if (end > BobFs.BlockSize)
                 end = BobFs.BlockSize;
 
             int count = end - start;
-            uint block = PartBlockNum(part);
 
             if (count == BobFs.BlockSize)
                 WriteBlock((int) block, 0, buffer, bufOffset);
@@ -200,6 +245,9 @@ namespace BobFS.NET
         // add 0 support
         public int ReadAll(int offset, byte[] buffer, int bufOffset, int n)
         {
+            if (offset + n > Size)
+                n = (int) (Size - offset); // TODO: Don't modify n
+
             int total = 0;
 
             while (n > 0)
@@ -218,9 +266,6 @@ namespace BobFS.NET
 
         public int WriteAll(int offset, byte[] buffer, int bufOffset, int n)
         {
-            if (n > Size)
-                throw new NotImplementedException("Expanding files is not supported yet.");
-
             int total = 0;
 
             while (n > 0)
@@ -255,7 +300,7 @@ namespace BobFS.NET
                 throw new Exception("No free Inode.");
             inodeBitmap[freeInum] = true;
             inodeBitmap.CopyTo(_tmpBuffer, 0);
-            _bobFs.Source.ReadAll(BobFs.BlockSize*2, _tmpBuffer, 0, BobFs.BlockSize);
+            _bobFs.Source.WriteAll(BobFs.BlockSize*2, _tmpBuffer, 0, BobFs.BlockSize);
 
             // Add to directory
             DirEntry newDirEntry = new DirEntry();
