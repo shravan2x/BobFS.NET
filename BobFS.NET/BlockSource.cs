@@ -68,7 +68,7 @@ namespace BobFS.NET
 
             while (n > 0)
             {
-                int cnt = Read(offset, buffer, bufOffset, n);
+                int cnt = Read(offset, buffer, bufOffset + total, n);
                 if (cnt <= 0)
                     return total;
 
@@ -86,7 +86,7 @@ namespace BobFS.NET
 
             while (n > 0)
             {
-                int cnt = Write(offset, buffer, bufOffset, n);
+                int cnt = Write(offset, buffer, bufOffset + total, n);
                 if (cnt <= 0)
                     return total;
 

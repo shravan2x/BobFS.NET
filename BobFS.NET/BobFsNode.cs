@@ -112,7 +112,7 @@ namespace BobFS.NET
                 end = BobFs.BlockSize;
 
             int count = end - blockOffset;
-
+            
             return _bobFs.Source.ReadAll(BobFs.BlockSize*blockNum + blockOffset, buffer, bufOffset, count);
         }
 
@@ -125,6 +125,9 @@ namespace BobFS.NET
         {
             int part = offset / BobFs.BlockSize;
             int start = offset % BobFs.BlockSize;
+            
+            if (part > Size/BobFs.BlockSize)
+                return 0;
 
             int end = start + n;
             if (end > BobFs.BlockSize)
@@ -148,7 +151,7 @@ namespace BobFS.NET
 
             while (n > 0)
             {
-                int cnt = Read(offset, buffer, bufOffset + offset, n);
+                int cnt = Read(offset, buffer, bufOffset + total, n);
                 if (cnt <= 0)
                     return total;
 
