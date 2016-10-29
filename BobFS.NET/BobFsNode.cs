@@ -142,7 +142,13 @@ namespace BobFS.NET
 
         private int WriteBlock(int blockNum, int blockOffset, byte[] buffer, int bufOffset, int n = BobFs.BlockSize)
         {
-            throw new NotImplementedException();
+            int end = blockOffset + n;
+            if (end > BobFs.BlockSize)
+                end = BobFs.BlockSize;
+
+            int count = end - blockOffset;
+
+            return _bobFs.Source.WriteAll(BobFs.BlockSize*blockNum + blockOffset, buffer, bufOffset, count);
         }
 
         private int Read(int offset, byte[] buffer, int bufOffset, int n)
@@ -168,6 +174,29 @@ namespace BobFS.NET
             return count;
         }
 
+        private int Write(int offset, byte[] buffer, int bufOffset, int n)
+        {
+            int part = offset / BobFs.BlockSize;
+            int start = offset % BobFs.BlockSize;
+            
+            if (part > Size/BobFs.BlockSize) // Update size and assign new blocks in a single sweep
+                return 0;
+
+            int end = start + n;
+            if (end > BobFs.BlockSize)
+                end = BobFs.BlockSize;
+
+            int count = end - start;
+            uint block = PartBlockNum(part);
+
+            if (count == BobFs.BlockSize)
+                WriteBlock((int) block, 0, buffer, bufOffset);
+            else if (count != 0)
+                WriteBlock((int) block, start, buffer, bufOffset, count);
+
+            return count;
+        }
+
         // add 0 support
         public int ReadAll(int offset, byte[] buffer, int bufOffset, int n)
         {
@@ -187,9 +216,25 @@ namespace BobFS.NET
             return total;
         }
 
-        public int WriteAll(int offset, byte[] buffer, int n)
+        public int WriteAll(int offset, byte[] buffer, int bufOffset, int n)
         {
-            throw new NotImplementedException();
+            if (n > Size)
+                throw new NotImplementedException("Expanding files is not supported yet.");
+
+            int total = 0;
+
+            while (n > 0)
+            {
+                int cnt = Write(offset, buffer, bufOffset + total, n);
+                if (cnt <= 0)
+                    return total;
+
+                total += cnt;
+                n -= cnt;
+                offset += cnt;
+            }
+
+            return total;
         }
 
         private BobFsNode NewDirEntry(string name, ENodeType type)
@@ -217,7 +262,7 @@ namespace BobFS.NET
             newDirEntry.Inum = (uint) freeInum;
             newDirEntry.Name = name;
             newDirEntry.WriteTo(_tmpBuffer);
-            int bytesWritten = WriteAll((int) Size, _tmpBuffer, name.Length + 8);
+            int bytesWritten = WriteAll((int) Size, _tmpBuffer, 0, name.Length + 8);
             if (bytesWritten < 0)
                 throw new Exception("Current directory is full.");
 
@@ -270,7 +315,7 @@ namespace BobFS.NET
             newDirEntry.Inum = file.Inum;
             newDirEntry.Name = name;
             newDirEntry.WriteTo(_tmpBuffer);
-            int bytesWritten = WriteAll((int) Size, _tmpBuffer, name.Length + 8);
+            int bytesWritten = WriteAll((int) Size, _tmpBuffer, 0, name.Length + 8);
             if (bytesWritten < 0)
                 throw new Exception("Current directory is full.");
 
