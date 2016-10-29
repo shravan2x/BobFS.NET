@@ -26,5 +26,10 @@ namespace BobFS.NET
         {
             Buffer.BlockCopy(buffer, bufOffset, _buffer, SectorSize*sector, SectorSize);
         }
+
+        public void Save(string file)
+        {
+            File.WriteAllBytes(file, _buffer);
+        }
     }
 }
