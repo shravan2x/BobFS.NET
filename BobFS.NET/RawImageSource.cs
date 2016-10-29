@@ -24,7 +24,7 @@ namespace BobFS.NET
 
         public override void WriteSector(int sector, byte[] buffer, int bufOffset = 0)
         {
-            Buffer.BlockCopy(buffer, SectorSize*sector, _buffer, bufOffset, SectorSize);
+            Buffer.BlockCopy(buffer, bufOffset, _buffer, SectorSize*sector, SectorSize);
         }
     }
 }

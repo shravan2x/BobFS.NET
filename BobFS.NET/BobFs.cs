@@ -53,7 +53,7 @@ namespace BobFS.NET
                 throw new Exception("Header magic incorrect!\n");
         }
 
-        // TODO: Add support for little endian architectures
+        // TODO: Add support for big endian architectures
         private class Superblock
         {
             public string Magic;

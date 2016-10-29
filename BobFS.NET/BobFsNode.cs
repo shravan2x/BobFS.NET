@@ -301,7 +301,7 @@ namespace BobFS.NET
             }
         }
 
-        // TODO: Add support for little endian architectures
+        // TODO: Add support for big endian architectures
         private class Inode
         {
             private ushort _type;
@@ -391,7 +391,7 @@ namespace BobFS.NET
             }
         }
 
-        // TODO: Add support for little endian architectures
+        // TODO: Add support for big endian architectures
         private class Indirects
         {
             private readonly uint[] _indirects;
@@ -430,7 +430,7 @@ namespace BobFS.NET
             }
         }
 
-        // TODO: Add support for little endian architectures
+        // TODO: Add support for big endian architectures
         private class DirEntry
         {
             public uint Inum { get; set; }
