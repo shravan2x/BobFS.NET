@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 
 namespace BobFS.NET
@@ -93,6 +94,29 @@ namespace BobFS.NET
         public bool IsFile => (Type == ENodeType.File);
 
         public bool IsDirectory => (Type == ENodeType.Directory);
+
+        public List<KeyValuePair<string, BobFsNode>> Contents
+        {
+            get
+            {
+                if (!IsDirectory)
+                    throw new InvalidOperationException("Current node is not a directory.");
+
+                List<KeyValuePair<string, BobFsNode>> contents = new List<KeyValuePair<string, BobFsNode>>();
+
+                int runner = 0;
+                DirEntry entry = new DirEntry();
+                while (runner < Size)
+                {
+                    ReadAll(runner, _tmpBuffer, 0, BobFs.BlockSize); // BUG: doesn't work with filenames larger than a block
+                    entry.ReadFrom(_tmpBuffer);
+                    runner += 8 + entry.Name.Length; // Point to next inum
+                    contents.Add(new KeyValuePair<string, BobFsNode>(entry.Name, new BobFsNode(_bobFs, entry.Inum)));
+                }
+
+                return contents;
+            }
+        }
 
         private uint PartBlockNum(int part)
         {
