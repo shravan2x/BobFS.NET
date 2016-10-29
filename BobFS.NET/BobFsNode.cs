@@ -51,6 +51,9 @@ namespace BobFS.NET
             {
                 if (_indirectValid)
                     return _indirect;
+
+                if (IndirectBlock == 0)
+                    throw new Exception("Indirect block does not exist.");
                 
                 ReadBlock((int) _node.IndirectBlock, 0, _tmpBuffer, 0, NodeSize);
                 _indirect.ReadFrom(_tmpBuffer);
@@ -88,7 +91,12 @@ namespace BobFS.NET
         public uint IndirectBlock
         {
             get { return Node.IndirectBlock; }
-            set { Node.IndirectBlock = value; }
+
+            set
+            {
+                Node.IndirectBlock = value;
+                _indirectValid = false;
+            }
         }
 
         public bool IsFile => (Type == ENodeType.File);
@@ -122,6 +130,9 @@ namespace BobFS.NET
         {
             if (part > Math.Ceiling((double) Size/BobFs.BlockSize))
                 throw new ArgumentException("Part invalid.");
+
+            if (part > 0 && IndirectBlock == 0)
+                return 0;
 
             return part == 0 ? DirectBlock : Indirect[part - 1];
         }
@@ -385,7 +396,7 @@ namespace BobFS.NET
             }
 
             // Write indirects
-            if (Indirect.Modified)
+            if (IndirectBlock != 0 && Indirect.Modified)
             {
                 WriteBlock((int) _node.IndirectBlock, 0, _tmpBuffer, 0, NodeSize);
             }
