@@ -314,11 +314,12 @@ namespace BobFS.NET
             _bobFs.Source.WriteAll(BobFs.BlockSize*2, _tmpBuffer, 0, BobFs.BlockSize);
 
             // Add to directory
+            byte[] dirEntryBuffer = new byte[BobFs.BlockSize];
             DirEntry newDirEntry = new DirEntry();
             newDirEntry.Inum = (uint) freeInum;
             newDirEntry.Name = name;
-            newDirEntry.WriteTo(_tmpBuffer);
-            int bytesWritten = WriteAll((int) Size, _tmpBuffer, 0, name.Length + 8);
+            newDirEntry.WriteTo(dirEntryBuffer);
+            int bytesWritten = WriteAll((int) Size, dirEntryBuffer, 0, name.Length + 8);
             if (bytesWritten < 0)
                 throw new Exception("Current directory is full.");
 
