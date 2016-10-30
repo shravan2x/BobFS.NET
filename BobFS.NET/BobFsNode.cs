@@ -55,7 +55,7 @@ namespace BobFS.NET
                 if (IndirectBlock == 0)
                     throw new Exception("Indirect block does not exist.");
                 
-                ReadBlock((int) _node.IndirectBlock, 0, _tmpBuffer, 0, NodeSize);
+                ReadBlock((int) _node.IndirectBlock, 0, _tmpBuffer, 0);
                 _indirect.ReadFrom(_tmpBuffer);
                 _indirect.Modified = false;
 
