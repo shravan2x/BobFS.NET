@@ -53,6 +53,21 @@ namespace BobFS.NET
             Buffer.BlockCopy(buffer, bufOffset, _sectors[sector], 0, SectorSize);
         }
 
+        public void Compact()
+        {
+            foreach (int sector in _sectors.Keys.ToArray())
+                if (CheckBufferZero(_sectors[sector]))
+                    _sectors.Remove(sector);
+        }
+
+        public void Save()
+        {
+            if (_file == null)
+                throw new Exception("File is not set.");
+
+            Save(_file);
+        }
+
         public void Save(string file)
         {
             _file = file;
@@ -64,6 +79,15 @@ namespace BobFS.NET
 
             // Since BobFS images are like 10MB at most, it doesn't make sense to track and syscall a write for each modified sector (In most real world cases).
             File.WriteAllBytes(file, writeBuf);
+        }
+
+        private static bool CheckBufferZero(byte[] buf)
+        {
+            byte orsum = 0;
+            for (int index = 0; index < buf.Length; index++)
+                orsum |= buf[index];
+
+            return (orsum == 0);
         }
     }
 }
