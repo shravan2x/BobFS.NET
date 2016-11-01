@@ -292,7 +292,7 @@ namespace BobFS.NET
             return total;
         }
 
-        private BobFsNode NewDirEntry(string name, ENodeType type)
+        private BobFsNode NewNode(string name, ENodeType type)
         {
             if (!IsDirectory)
                 throw new InvalidOperationException("Current node is not a directory.");
@@ -332,12 +332,12 @@ namespace BobFS.NET
 
         public BobFsNode NewFile(string name)
         {
-            return NewDirEntry(name, ENodeType.File);
+            return NewNode(name, ENodeType.File);
         }
 
         public BobFsNode NewDirectory(string name)
         {
-            return NewDirEntry(name, ENodeType.Directory);
+            return NewNode(name, ENodeType.Directory);
         }
 
         public BobFsNode FindNode(string name)
@@ -398,8 +398,7 @@ namespace BobFS.NET
                 WriteBlock((int) _node.IndirectBlock, 0, _tmpBuffer, 0, NodeSize);
             }
         }
-
-        // TODO: Add support for big endian architectures
+        
         private class Inode
         {
             private ushort _type;
@@ -488,8 +487,7 @@ namespace BobFS.NET
                 BitConverter.GetBytes(IndirectBlock).CopyTo(buffer, bufOffset + 12);
             }
         }
-
-        // TODO: Add support for big endian architectures
+        
         private class Indirects
         {
             private readonly uint[] _indirects;
@@ -527,8 +525,7 @@ namespace BobFS.NET
                     BitConverter.GetBytes(this[index]).CopyTo(buffer, bufOffset + index*4);
             }
         }
-
-        // TODO: Add support for big endian architectures
+        
         private class DirEntry
         {
             public uint Inum { get; set; }

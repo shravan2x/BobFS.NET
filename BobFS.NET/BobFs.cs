@@ -52,8 +52,7 @@ namespace BobFS.NET
             if (_superBlock.Magic != HeaderMagic)
                 throw new Exception("Header magic incorrect!\n");
         }
-
-        // TODO: Add support for big endian architectures
+        
         private class Superblock
         {
             public string Magic;
