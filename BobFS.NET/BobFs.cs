@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Text;
 
 namespace BobFS.NET
@@ -12,16 +13,43 @@ namespace BobFS.NET
         internal readonly BlockSource Source;
         private readonly bool _caching;
         private readonly byte[] _tmpBuffer;
-        private readonly Superblock _superBlock;
+        private Superblock _superBlock;
 
         private BobFs(BlockSource source, bool caching = true)
         {
             Source = source;
             _caching = caching;
 
-            _tmpBuffer = new byte[BlockSource.SectorSize];
-            Source.ReadAll(0, _tmpBuffer, 0, BlockSource.SectorSize);
+            _tmpBuffer = new byte[BlockSize];
+            Source.ReadAll(0, _tmpBuffer, 0, BlockSize);
             _superBlock = Superblock.ReadFrom(_tmpBuffer);
+        }
+
+        public void Format()
+        {
+            // Setup superblock
+            Array.Clear(_tmpBuffer, 0, BlockSize);
+            Encoding.ASCII.GetBytes(HeaderMagic).CopyTo(_tmpBuffer, 0);
+            BitConverter.GetBytes((int) 0).CopyTo(_tmpBuffer, HeaderMagic.Length);
+            Source.WriteAll(0, _tmpBuffer, 0, BlockSize);
+            _superBlock = Superblock.ReadFrom(_tmpBuffer);
+
+            // Setup block bitmap
+            byte[] tmpBuffer = new byte[BlockSize];
+            Source.WriteAll(BlockSize*1, tmpBuffer, 0, BlockSize);
+
+            // Clear inode bitmap
+            BitArray inodeBitmap = new BitArray(tmpBuffer);
+            inodeBitmap[0] = true;
+            inodeBitmap.CopyTo(tmpBuffer, 0);
+            Source.WriteAll(BlockSize*2, tmpBuffer, 0, BlockSize);
+
+            // Create root directory
+            BobFsNode root = new BobFsNode(this, 0);
+            root.Type = ENodeType.Directory;
+            root.NumLinks = 1;
+            root.Size = 0;
+            root.Commit();
         }
 
         /// <summary>
@@ -34,7 +62,9 @@ namespace BobFS.NET
         /// </summary>
         public static BobFs Mkfs(BlockSource device)
         {
-            throw new NotImplementedException();
+            BobFs fs = new BobFs(device);
+            fs.Format();
+            return fs;
         }
         
         /// <summary>
