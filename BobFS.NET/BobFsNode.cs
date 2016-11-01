@@ -116,8 +116,7 @@ namespace BobFS.NET
                 DirEntry entry = new DirEntry();
                 while (runner < Size)
                 {
-                    ReadAll(runner, _tmpBuffer, 0, BobFs.BlockSize); // BUG: doesn't work with filenames larger than a block
-                    entry.ReadFrom(_tmpBuffer);
+                    entry.ReadFrom(this, runner);
                     runner += 8 + entry.Name.Length; // Point to next inum
                     contents.Add(new KeyValuePair<string, BobFsNode>(entry.Name, new BobFsNode(_bobFs, entry.Inum)));
                 }
@@ -314,12 +313,10 @@ namespace BobFS.NET
             _bobFs.Source.WriteAll(BobFs.BlockSize*2, _tmpBuffer, 0, BobFs.BlockSize);
 
             // Add to directory
-            byte[] dirEntryBuffer = new byte[BobFs.BlockSize];
             DirEntry newDirEntry = new DirEntry();
             newDirEntry.Inum = (uint) freeInum;
             newDirEntry.Name = name;
-            newDirEntry.WriteTo(dirEntryBuffer);
-            int bytesWritten = WriteAll((int) Size, dirEntryBuffer, 0, name.Length + 8);
+            int bytesWritten = newDirEntry.WriteTo(this, name.Length + 8);
             if (bytesWritten < 0)
                 throw new Exception("Current directory is full.");
 
@@ -352,8 +349,7 @@ namespace BobFS.NET
             DirEntry entry = new DirEntry();
             while (runner < Size)
             {
-                ReadAll(runner, _tmpBuffer, 0, BobFs.BlockSize); // BUG: doesn't work with filenames larger than a block
-                entry.ReadFrom(_tmpBuffer);
+                entry.ReadFrom(this, runner);
                 runner += 8 + entry.Name.Length; // Point to next inum
                 if (entry.Name == name)
                     return new BobFsNode(_bobFs, entry.Inum);
@@ -371,7 +367,7 @@ namespace BobFS.NET
             DirEntry newDirEntry = new DirEntry();
             newDirEntry.Inum = file.Inum;
             newDirEntry.Name = name;
-            newDirEntry.WriteTo(_tmpBuffer);
+            newDirEntry.WriteTo(this, (int) Size);
             int bytesWritten = WriteAll((int) Size, _tmpBuffer, 0, name.Length + 8);
             if (bytesWritten < 0)
                 throw new Exception("Current directory is full.");
@@ -538,18 +534,25 @@ namespace BobFS.NET
             public uint Inum { get; set; }
             public string Name { get; set; }
             
-            public void ReadFrom(byte[] buffer, int bufOffset = 0)
+            public void ReadFrom(BobFsNode node, int offset)
             {
-                Inum = BitConverter.ToUInt32(buffer, bufOffset + 0);
-                uint nameLength = BitConverter.ToUInt32(buffer, bufOffset + 4);
-                Name = Encoding.ASCII.GetString(buffer, bufOffset + 8, (int) nameLength);
+                byte[] headBuf = new byte[8];
+                node.ReadAll(offset, headBuf, 0, 8);
+                Inum = BitConverter.ToUInt32(headBuf, 0);
+                uint nameLength = BitConverter.ToUInt32(headBuf, 4);
+
+                byte[] nameBuf = new byte[nameLength];
+                node.ReadAll(offset + 8, nameBuf, 0, (int) nameLength);
+                Name = Encoding.ASCII.GetString(nameBuf, 0, (int) nameLength);
             }
             
-            public void WriteTo(byte[] buffer, int bufOffset = 0)
+            public int WriteTo(BobFsNode node, int offset)
             {
-                BitConverter.GetBytes(Inum).CopyTo(buffer, bufOffset + 0);
-                BitConverter.GetBytes((uint) Name.Length).CopyTo(buffer, bufOffset + 4);
-                Encoding.ASCII.GetBytes(Name).CopyTo(buffer, bufOffset + 8);
+                byte[] buf = new byte[Name.Length + 8];
+                BitConverter.GetBytes(Inum).CopyTo(buf, 0);
+                BitConverter.GetBytes((uint) Name.Length).CopyTo(buf, 4);
+                Encoding.ASCII.GetBytes(Name).CopyTo(buf, 8);
+                return node.WriteAll(offset, buf, 0, buf.Length);
             }
         }
     }
