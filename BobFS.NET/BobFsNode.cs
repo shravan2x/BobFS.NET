@@ -117,7 +117,7 @@ namespace BobFS.NET
                 while (runner < Size)
                 {
                     entry.ReadFrom(this, runner);
-                    runner += 8 + entry.Name.Length; // Point to next inum
+                    runner += 8 + entry.Name.Length; // Point to next direntry's inum
                     contents.Add(new KeyValuePair<string, BobFsNode>(entry.Name, new BobFsNode(_bobFs, entry.Inum)));
                 }
 
@@ -316,7 +316,7 @@ namespace BobFS.NET
             DirEntry newDirEntry = new DirEntry();
             newDirEntry.Inum = (uint) freeInum;
             newDirEntry.Name = name;
-            int bytesWritten = newDirEntry.WriteTo(this, name.Length + 8);
+            int bytesWritten = newDirEntry.WriteTo(this, (int) Size);
             if (bytesWritten < 0)
                 throw new Exception("Current directory is full.");
 
