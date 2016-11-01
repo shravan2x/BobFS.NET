@@ -303,7 +303,7 @@ namespace BobFS.NET
             int freeInum = -1;
             _bobFs.Source.ReadAll(BobFs.BlockSize*2, _tmpBuffer, 0, BobFs.BlockSize);
             BitArray inodeBitmap = new BitArray(_tmpBuffer);
-            for (int index = 0; index < BobFs.BlockSize*8; index++)
+            for (int index = 0; index < BobFs.BlockSize*8 && freeInum == -1; index++)
                 if (!inodeBitmap[index])
                     freeInum = index;
             if (freeInum == -1)
@@ -395,7 +395,8 @@ namespace BobFS.NET
             // Write indirects
             if (IndirectBlock != 0 && Indirect.Modified)
             {
-                WriteBlock((int) _node.IndirectBlock, 0, _tmpBuffer, 0, NodeSize);
+                _indirect.WriteTo(_tmpBuffer);
+                WriteBlock((int) _node.IndirectBlock, 0, _tmpBuffer, 0);
             }
         }
         
