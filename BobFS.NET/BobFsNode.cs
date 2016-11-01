@@ -139,22 +139,22 @@ namespace BobFS.NET
 
         private int FindFreeBlock()
         {
-            int freeBlock = -1;
+            int freeIndex = -1;
 
             _bobFs.Source.ReadAll(BobFs.BlockSize*1, _tmpBuffer, 0, BobFs.BlockSize);
             BitArray blockBitmap = new BitArray(_tmpBuffer);
-            for (int index = 0; index < BobFs.BlockSize*8 && freeBlock == -1; index++)
+            for (int index = 0; index < BobFs.BlockSize*8 && freeIndex == -1; index++)
                 if (!blockBitmap[index])
-                    freeBlock = index;
+                    freeIndex = index;
 
-            if (freeBlock == -1)
+            if (freeIndex == -1)
                 return -1;
 
-            blockBitmap[freeBlock] = true;
+            blockBitmap[freeIndex] = true;
             blockBitmap.CopyTo(_tmpBuffer, 0);
             _bobFs.Source.WriteAll(BobFs.BlockSize*1, _tmpBuffer, 0, BobFs.BlockSize);
             
-            return freeBlock;
+            return freeIndex + 128 + 3;
         }
 
         private uint AssignBlock(int part)
