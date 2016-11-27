@@ -358,6 +358,45 @@ namespace BobFS.NET
             return null;
         }
 
+        // TODO: We should update the inode bitmap if necessary
+        public void DeleteNode(BobFsNode node)
+        {
+            if (!IsDirectory)
+                throw new InvalidOperationException("Current node is not a directory.");
+
+            int runner = 0;
+            DirEntry entry = new DirEntry();
+            while (runner < Size)
+            {
+                entry.ReadFrom(this, runner);
+
+                if (entry.Inum == node.Inum)
+                {
+                    int read;
+                    while ((read = ReadAll(runner + (8 + entry.Name.Length), _tmpBuffer, 0, BobFs.BlockSize)) != 0)
+                    {
+                        WriteAll(runner, _tmpBuffer, 0, read);
+                        runner += read;
+                    }
+
+                    Size -= (uint) (8 + entry.Name.Length);
+                    return;
+                }
+                
+                runner += 8 + entry.Name.Length; // Point to next direntry's inum
+            }
+
+            throw new Exception("Node not found.");
+        }
+
+        public void RenameNode(BobFsNode node, string name)
+        {
+            DeleteNode(node);
+            LinkNode(name, node);
+            node.NumLinks--;
+            node.Commit();
+        }
+
         public void LinkNode(string name, BobFsNode file)
         {
             if (!IsDirectory)
@@ -367,8 +406,7 @@ namespace BobFS.NET
             DirEntry newDirEntry = new DirEntry();
             newDirEntry.Inum = file.Inum;
             newDirEntry.Name = name;
-            newDirEntry.WriteTo(this, (int) Size);
-            int bytesWritten = WriteAll((int) Size, _tmpBuffer, 0, name.Length + 8);
+            int bytesWritten = newDirEntry.WriteTo(this, (int) Size);
             if (bytesWritten < 0)
                 throw new Exception("Current directory is full.");
 
